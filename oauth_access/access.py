@@ -145,9 +145,16 @@ class OAuthAccess(object):
                     )
                 ).read()
                 response = cgi.parse_qs(raw_data)
+                # @@@ Facebook does not return "expires",
+                # yet its tokens expire after 2 hours
+                # unless the user grants the "Offline Access"
+                # extended permission.
+                expires = response.get("expires",None)
+                if expires:
+                    expires = int(expires)[-1]
                 return OAuth20Token(
                     response["access_token"][-1],
-                    int(response["expires"][-1])
+                    expires
                 )
             else:
                 # @@@ this error case is not nice
@@ -291,9 +298,12 @@ class Client(oauth.Client):
 
 class OAuth20Token(object):
     
-    def __init__(self, token, expires):
+    def __init__(self, token, expires=None):
         self.token = token
-        self.expires = datetime.datetime.now() + datetime.timedelta(seconds=expires)
+        if expires:
+            self.expires = datetime.datetime.now() + datetime.timedelta(seconds=expires)
+        else:
+            self.expires = None
     
     def __str__(self):
         return str(self.token)
