@@ -4,6 +4,7 @@ import httplib2
 import logging
 import socket
 import urllib
+import urlparse
 
 from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
@@ -53,6 +54,13 @@ class OAuthAccess(object):
     @property
     def authorize_url(self):
         return self._obtain_setting("endpoints", "authorize")
+    
+    @property
+    def provider_scope(self):
+        try:
+            return self._obtain_setting("endpoints", "provider_scope")
+        except KeyError:
+            return None
     
     def _obtain_setting(self, k1, k2):
         name = "OAUTH_ACCESS_SETTINGS"
@@ -171,6 +179,9 @@ class OAuthAccess(object):
                 client_id = self.key,
                 redirect_uri = self.callback_url,
             )
+            scope = self.provider_scope
+            if scope is not None:
+                params["scope"] = ",".join(scope)
             return self.authorize_url + "?%s" % urllib.urlencode(params)
         else:
             request = oauth.Request.from_consumer_and_token(
@@ -212,16 +223,27 @@ class OAuthAccess(object):
     
     def make_api_call(self, kind, url, token, method="GET", **kwargs):
         if isinstance(token, OAuth20Token):
-            url += "?%s" % urllib.urlencode(dict(access_token=str(token)))
+            request_kwargs = dict(method=method)
+            if method == "POST":
+                params = {
+                    "access_token": str(token),
+                }
+                params.update(kwargs["params"])
+                request_kwargs["body"] = urllib.urlencode(params)
+            else:
+                url += "?%s" % urllib.urlencode(dict(access_token=str(token)))
             http = httplib2.Http()
-            response, content = http.request(url, method=method)
+            response, content = http.request(url, **request_kwargs)
         else:
             if isinstance(token, basestring):
                 token = oauth.Token.from_string(token)
             client = Client(self.consumer, token=token)
             # @@@ LinkedIn requires Authorization header which is supported in
             # sub-classed version of Client (originally from oauth2)
-            response, content = client.request(url, method=method, force_auth_header=True)
+            request_kwargs = dict(method=method, force_auth_header=True)
+            if method == "POST":
+                request_kwargs["body"] = urllib.urlencode(kwargs["params"])
+            response, content = client.request(url, **request_kwargs)
         if response["status"] == "401":
             raise NotAuthorized()
         if not content:
@@ -261,7 +283,7 @@ class Client(oauth.Client):
         is_multipart = method == "POST" and headers.get("Content-Type", DEFAULT_CONTENT_TYPE) != DEFAULT_CONTENT_TYPE
         
         if body and method == "POST" and not is_multipart:
-            parameters = dict(parse_qsl(body))
+            parameters = dict(urlparse.parse_qsl(body))
         else:
             parameters = None
         
@@ -300,7 +322,7 @@ class OAuth20Token(object):
     
     def __init__(self, token, expires=None):
         self.token = token
-        if expires:
+        if expires is not None:
             self.expires = datetime.datetime.now() + datetime.timedelta(seconds=expires)
         else:
             self.expires = None
