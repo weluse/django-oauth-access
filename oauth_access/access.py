@@ -98,10 +98,12 @@ class OAuthAccess(object):
         )
         try:
             return oauth.Token.from_string(content)
-        except KeyError, e:
+        except KeyError e:
             if e.args[0] == "oauth_token":
                 raise ServiceFail()
             raise
+        except ValueError:
+            raise ServiceFail()
     
     @property
     def callback_url(self):
