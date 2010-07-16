@@ -6,6 +6,7 @@ This app provides support for:
  * Twitter
  * LinkedIn
  * Yahoo
+ * Youtube
  * Facebook (using OAuth 2.0 — it is functional, but needs more work)
  * Likely any OAuth 1.0a compliant site
 
