@@ -89,6 +89,9 @@ class OAuthAccess(object):
         parameters = {
             "oauth_callback": self.callback_url,
         }
+        scope = self.provider_scope
+        if scope is not None:
+            parameters["scope"] = ",".join(scope)
         client = oauth.Client(self.consumer)
         response, content = client.request(self.request_token_url,
             method = "POST",
