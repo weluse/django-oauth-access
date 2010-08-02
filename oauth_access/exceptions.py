@@ -4,3 +4,7 @@ class NotAuthorized(Exception):
 
 class MissingToken(Exception):
     pass
+
+
+class ServiceFail(Exception):
+    pass
