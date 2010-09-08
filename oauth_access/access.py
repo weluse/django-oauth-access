@@ -95,14 +95,12 @@ class OAuthAccess(object):
             # and re-encoded by oauth2 -- seems lame)
             body = urllib.urlencode(parameters),
         )
-        try:
-            return oauth.Token.from_string(content)
-        except KeyError, e:
-            if e.args[0] == "oauth_token":
-                raise ServiceFail()
-            raise
-        except ValueError:
-            raise ServiceFail()
+        if response["status"] != "200":
+            raise UnknownResponse(
+                "Got %s from %s:\n\n%s" % (
+                    response["status"], self.request_token_url, content
+                ))
+        return oauth.Token.from_string(content)
     
     @property
     def callback_url(self):
@@ -127,6 +125,11 @@ class OAuthAccess(object):
             # oauth2 -- seems lame)
             body = urllib.urlencode(parameters),
         )
+        if response["status"] != "200":
+            raise UnknownResponse(
+                "Got %s from %s:\n\n%s" % (
+                    response["status"], self.access_token_url, content
+                ))
         return oauth.Token.from_string(content)
     
     def check_token(self, unauth_token, parameters):
@@ -154,24 +157,17 @@ class OAuthAccess(object):
                     )
                 ).read()
                 response = cgi.parse_qs(raw_data)
-                # @@@ Facebook does not return "expires",
-                # yet its tokens expire after 2 hours
-                # unless the user grants the "Offline Access"
-                # extended permission.
-                expires = response.get("expires",None)
-                if expires:
-                    expires = int(expires[-1])
                 return OAuth20Token(
                     response["access_token"][-1],
-                    expires
+                    int(response["expires"][-1])
                 )
             else:
                 # @@@ this error case is not nice
                 return None
     
-    def callback(self, *args, **kwargs):
-        cb = load_path_attr(self._obtain_setting("endpoints", "callback"))
-        return cb(*args, **kwargs)
+    @property
+    def callback(self):
+        return load_path_attr(self._obtain_setting("endpoints", "callback"))
     
     def authorization_url(self, token=None):
         if token is None:
