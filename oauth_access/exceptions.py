@@ -8,3 +8,7 @@ class MissingToken(Exception):
 
 class ServiceFail(Exception):
     pass
+
+
+class UnknownResponse(Exception):
+    pass

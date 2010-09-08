@@ -15,7 +15,8 @@ from django.contrib.sites.models import Site
 
 import oauth2 as oauth
 
-from oauth_access.exceptions import NotAuthorized, MissingToken, ServiceFail
+from oauth_access.exceptions import NotAuthorized, MissingToken, \
+        ServiceFail, UnknownResponse
 from oauth_access.models import UserAssociation
 from oauth_access.utils.anyetree import etree
 from oauth_access.utils.loader import load_path_attr
