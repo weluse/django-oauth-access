@@ -56,7 +56,7 @@ class OAuthAccess(object):
     def provider_scope(self):
         try:
             return self._obtain_setting("endpoints", "provider_scope")
-        except KeyError:
+        except (KeyError, ImproperlyConfigured):
             return None
     
     def _obtain_setting(self, k1, k2):
